@@ -7,6 +7,7 @@
     "dev:api": "pnpm --filter @lingualink/api dev",
     "dev:mobile": "pnpm --filter @lingualink/mobile start",
     "build": "pnpm --recursive run build",
+    "build:api": "pnpm --filter @lingualink/types build && pnpm --filter @lingualink/config build && pnpm --filter @lingualink/realtime-events build && pnpm --filter @lingualink/api build",
     "test": "pnpm --recursive run test",
     "lint": "pnpm --recursive run lint",
     "clean": "pnpm --recursive run clean"
