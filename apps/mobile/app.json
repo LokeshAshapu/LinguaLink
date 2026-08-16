@@ -9,9 +9,11 @@
       "**/*"
     ],
     "ios": {
+      "bundleIdentifier": "com.lingualink.mobile",
       "supportsTablet": true
     },
     "android": {
+      "package": "com.lingualink.mobile",
       "adaptiveIcon": {
         "backgroundColor": "#0F172A"
       }
