@@ -1,0 +1,27 @@
+{
+  "name": "lingualink-core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "LinguaLink Core v0.1 — Real-time Multilingual Voice Communication Platform",
+  "scripts": {
+    "dev:api": "pnpm --filter @lingualink/api dev",
+    "dev:mobile": "pnpm --filter @lingualink/mobile start",
+    "build": "pnpm --recursive run build",
+    "test": "pnpm --recursive run test",
+    "lint": "pnpm --recursive run lint",
+    "clean": "pnpm --recursive run clean"
+  },
+  "devDependencies": {
+    "prettier": "^3.2.5",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "argon2"
+    ]
+  }
+}

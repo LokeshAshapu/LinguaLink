@@ -1,0 +1,101 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum LanguageCode {
+  te_IN // Telugu
+  hi_IN // Hindi
+  en_US // English
+  ta_IN // Tamil
+  kn_IN // Kannada
+  ml_IN // Malayalam
+  bn_IN // Bengali
+  mr_IN // Marathi
+}
+
+enum CallStatus {
+  IDLE
+  CALLING
+  RINGING
+  CONNECTING
+  CONNECTED
+  TRANSLATING
+  RECONNECTING
+  ENDED
+  FAILED
+}
+
+enum ParticipantRole {
+  CALLER
+  RECEIVER
+}
+
+model User {
+  id                         String         @id @default(uuid())
+  email                      String         @unique
+  passwordHash               String
+  displayName                String
+  profileImage               String?
+  nativeLanguage             LanguageCode   @default(te_IN)
+  preferredListeningLanguage LanguageCode   @default(hi_IN)
+  uiLanguage                 LanguageCode   @default(te_IN)
+  createdAt                  DateTime       @default(now())
+  updatedAt                  DateTime       @updatedAt
+
+  callsInitiated             Call[]         @relation("CallerRelation")
+  callsReceived              Call[]         @relation("ReceiverRelation")
+  callParticipants           CallParticipant[]
+
+  @@map("users")
+}
+
+model Call {
+  id           String            @id @default(uuid())
+  callerId     String
+  receiverId   String
+  status       CallStatus        @default(IDLE)
+  startedAt    DateTime?
+  endedAt      DateTime?
+  duration     Int?              // Duration in seconds
+  createdAt    DateTime          @default(now())
+
+  caller       User              @relation("CallerRelation", fields: [callerId], references: [id], onDelete: Cascade)
+  receiver     User              @relation("ReceiverRelation", fields: [receiverId], references: [id], onDelete: Cascade)
+  participants CallParticipant[]
+  events       CallEvent[]
+
+  @@map("calls")
+}
+
+model CallParticipant {
+  id             String          @id @default(uuid())
+  callId         String
+  userId         String
+  role           ParticipantRole
+  sourceLanguage LanguageCode
+  targetLanguage LanguageCode
+  joinedAt       DateTime?
+  leftAt         DateTime?
+
+  call           Call            @relation(fields: [callId], references: [id], onDelete: Cascade)
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("call_participants")
+}
+
+model CallEvent {
+  id        String   @id @default(uuid())
+  callId    String
+  eventType String
+  metadata  Json?
+  timestamp DateTime @default(now())
+
+  call      Call     @relation(fields: [callId], references: [id], onDelete: Cascade)
+
+  @@map("call_events")
+}
