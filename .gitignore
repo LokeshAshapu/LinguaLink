@@ -2,13 +2,15 @@
 node_modules/
 .pnpm-store/
 
-# Build outputs
+# Build outputs & Expo Native Directories
 dist/
 build/
 .next/
 out/
 *.tsbuildinfo
 .expo/
+apps/mobile/android/
+apps/mobile/ios/
 
 # Environment & Credentials
 .env

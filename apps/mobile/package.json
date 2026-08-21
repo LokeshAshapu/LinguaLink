@@ -7,7 +7,8 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "build": "tsc"
+    "build": "tsc",
+    "eas-build-post-install": "cd ../.. && pnpm --filter @lingualink/types build && pnpm --filter @lingualink/config build && pnpm --filter @lingualink/realtime-events build"
   },
   "dependencies": {
     "@lingualink/config": "workspace:*",
