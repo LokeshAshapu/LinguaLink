@@ -3,6 +3,7 @@ import { NativeModules } from 'react-native';
 
 const DEFAULT_RENDER_API_URL = 'https://lingualink-api.onrender.com/api/v1';
 const DEFAULT_RENDER_SIGNALING_URL = 'wss://lingualink-api.onrender.com/signaling';
+const DEFAULT_LIVEKIT_URL = 'wss://lingualink-api.onrender.com/livekit';
 
 const getHostIp = (): string => {
   try {
@@ -46,11 +47,21 @@ const getSignalingUrl = (): string => {
   return DEFAULT_RENDER_SIGNALING_URL;
 };
 
+const getLiveKitUrl = (): string => {
+  const envUrl = process.env.EXPO_PUBLIC_LIVEKIT_URL;
+  if (envUrl && (envUrl.startsWith('ws') || envUrl.startsWith('wss'))) {
+    return envUrl;
+  }
+  return DEFAULT_LIVEKIT_URL;
+};
+
 export const ENV = {
   HOST: host,
   API_URL: getApiUrl(),
   SIGNALING_URL: getSignalingUrl(),
+  LIVEKIT_URL: getLiveKitUrl(),
 };
 
 console.log('[ENV] Resolved API_URL:', ENV.API_URL);
 console.log('[ENV] Resolved SIGNALING_URL:', ENV.SIGNALING_URL);
+console.log('[ENV] Resolved LIVEKIT_URL:', ENV.LIVEKIT_URL);

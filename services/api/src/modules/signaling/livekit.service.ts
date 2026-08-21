@@ -4,14 +4,13 @@ dotenv.config();
 
 const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY || 'devkey';
 const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET || 'secretsecretsecretsecretsecretsecret';
-const LIVEKIT_URL = process.env.LIVEKIT_URL || 'ws://localhost:7880';
+const LIVEKIT_URL = process.env.LIVEKIT_URL || process.env.PUBLIC_LIVEKIT_URL || 'wss://lingualink-api.onrender.com/livekit';
 
 export class LiveKitService {
   /**
    * Generates a WebRTC connection token for a participant joining a LiveKit room.
    */
-  public static generateRoomToken(roomName: string, participantIdentity: string, participantName: string): { token: string; url: string } {
-    // Basic JWT token structure for LiveKit signaling fallback
+  public static generateRoomToken(roomName: string, participantIdentity: string, participantName: string, customUrl?: string): { token: string; url: string } {
     const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
     const now = Math.floor(Date.now() / 1000);
     const payload = Buffer.from(
@@ -39,9 +38,12 @@ export class LiveKitService {
 
     const token = `${header}.${payload}.${signature}`;
 
+    const resolvedUrl = customUrl || LIVEKIT_URL;
+    console.log(`[MEDIA] Generated LiveKit room token for participant ${participantIdentity} in room ${roomName} at ${resolvedUrl}`);
+
     return {
       token,
-      url: LIVEKIT_URL,
+      url: resolvedUrl,
     };
   }
 }

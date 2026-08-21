@@ -46,6 +46,7 @@ export class AuthStore {
     try {
       const token = await storage.getItem('auth_token');
       if (token) {
+        console.log('[AUTH] JWT received from storage');
         const res = await authApi.getMe();
         this.setState({
           token,
@@ -69,9 +70,11 @@ export class AuthStore {
   }
 
   public async login(email: string, password: string): Promise<boolean> {
+    console.log('[AUTH] Login started');
     this.setState({ isLoading: true, error: null });
     try {
       const res = await authApi.login(email, password);
+      console.log('[AUTH] JWT received');
       await storage.setItem('auth_token', res.token);
       this.setState({
         token: res.token,

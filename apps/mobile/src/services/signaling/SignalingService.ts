@@ -24,11 +24,13 @@ export class SignalingService {
 
     return new Promise((resolve, reject) => {
       try {
+        console.log('[SIGNALING] Connecting');
         this.ws = new WebSocket(wsUrl);
         this.isConnecting = true;
 
         this.ws.onopen = () => {
-          console.log('[SIGNALING] Connected successfully');
+          console.log('[SIGNALING] Connected');
+          console.log('[SIGNALING] Authentication successful');
           this.isConnecting = false;
           resolve();
         };
@@ -44,7 +46,7 @@ export class SignalingService {
         };
 
         this.ws.onerror = (error) => {
-          console.error('[SIGNALING] WebSocket error:', error);
+          console.error('[SIGNALING] Connection failed:', error);
           if (this.isConnecting) {
             this.isConnecting = false;
             reject(error);

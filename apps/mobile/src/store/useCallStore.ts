@@ -75,8 +75,8 @@ export class CallStore {
   public setupSignalingListeners() {
     signalingService.on(SignalingEventType.CALL_RINGING, (message) => {
       const p = message.payload as any;
-      console.log('[CALL] Received CALL_RINGING via signaling:', p.callId);
-      // Notice: If we are receiver, handle incoming call
+      console.log('[CALL] CALL_RINGING received callId=' + p.callId + ' from caller=' + p.callerId);
+      
       if (this.state.callStatus === 'IDLE' && !this.state.currentCallId) {
         this.setState({
           incomingCall: {
@@ -90,25 +90,34 @@ export class CallStore {
     });
 
     signalingService.on(SignalingEventType.CALL_STATE_CHANGE, async (message) => {
-      const { callId, status } = message.payload as any;
-      console.log('[CALL] Received CALL_STATE_CHANGE:', status, 'for call:', callId);
+      const p = message.payload as any;
+      const { callId, status, livekitToken, livekitUrl } = p;
+      console.log('[CALL] CALL_STATE_CHANGE received status=' + status + ' callId=' + callId);
+      
       if (status === 'CONNECTED' && this.state.currentCallId === callId) {
         this.setState({ callStatus: 'CONNECTING' });
-        if (this.state.livekitUrl && this.state.livekitToken) {
+        const targetUrl = livekitUrl || this.state.livekitUrl;
+        const targetToken = livekitToken || this.state.livekitToken;
+
+        if (targetUrl && targetToken) {
           try {
-            await liveKitService.connect(this.state.livekitUrl, this.state.livekitToken);
+            console.log('[MEDIA] Room/session connecting...');
+            await liveKitService.connect(targetUrl, targetToken);
             this.setCallConnected();
           } catch (err: any) {
-            console.error('[CALL] LiveKit connection error on state change:', err);
-            this.setState({ callStatus: 'FAILED', errorMessage: err.message });
+            console.error('[MEDIA] Connection failed code=' + (err?.code || 'CONN_ERR') + ' reason=' + (err?.message || err) + ' state=' + liveKitService.getRoomState());
+            this.setState({ callStatus: 'FAILED', errorMessage: err?.message || 'Media connection failed' });
           }
+        } else {
+          console.warn('[MEDIA] Connection failed code=NO_TOKEN reason=Missing LiveKit token or URL state=DISCONNECTED');
+          this.setState({ callStatus: 'FAILED', errorMessage: 'Missing LiveKit media credentials' });
         }
       }
     });
 
     signalingService.on(SignalingEventType.CALL_END, (message) => {
       const { callId } = message.payload as any;
-      console.log('[CALL] Received CALL_END event for:', callId);
+      console.log('[CALL] CALL_END received for callId=' + callId);
       if (this.state.currentCallId === callId || this.state.incomingCall?.callId === callId) {
         this.resetCall();
       }
@@ -116,7 +125,7 @@ export class CallStore {
 
     signalingService.on(SignalingEventType.CALL_REJECT, (message) => {
       const { callId } = message.payload as any;
-      console.log('[CALL] Received CALL_REJECT event for:', callId);
+      console.log('[CALL] CALL_REJECT received for callId=' + callId);
       if (this.state.currentCallId === callId) {
         this.resetCall();
       }
@@ -132,6 +141,7 @@ export class CallStore {
     currentUserName: string,
     currentUserLanguage: LanguageCode
   ) {
+    console.log('[CALL] Initiating call to receiverId=' + receiverId);
     this.setState({
       callStatus: 'CALLING',
       remoteUserId: receiverId,
@@ -141,8 +151,10 @@ export class CallStore {
     });
 
     try {
+      console.log('[CALL] API request sent POST /calls/initiate');
       const res = await callsApi.initiateCall(receiverId);
-      console.log('[CALL] Initiate response received, callId:', res.call.id);
+      console.log('[CALL] API response received status=201');
+      console.log('[CALL] Call ID received callId=' + res.call.id);
 
       this.setState({
         currentCallId: res.call.id,
@@ -151,7 +163,7 @@ export class CallStore {
         callStatus: 'RINGING',
       });
 
-      // Send Signaling CALL_INITIATE message over WebSocket
+      console.log('[CALL] CALL_RINGING sent via WebSocket signaling');
       signalingService.send(SignalingEventType.CALL_INITIATE, {
         callId: res.call.id,
         callerId: currentUserId,
@@ -161,10 +173,10 @@ export class CallStore {
         targetLanguage: receiverLanguage,
       });
     } catch (err: any) {
-      console.error('[CALL] Initiate call failed:', err);
+      console.error('[CALL] Initiate call failed code=' + (err?.code || 'INIT_ERR') + ' reason=' + (err?.message || err));
       this.setState({
         callStatus: 'FAILED',
-        errorMessage: err.message || 'Call initiation failed',
+        errorMessage: err?.message || 'Call initiation failed',
       });
     }
   }
@@ -181,6 +193,8 @@ export class CallStore {
     if (!incoming) return;
 
     const callId = incoming.callId;
+    console.log('[CALL] Accept pressed for callId=' + callId);
+
     this.setState({
       currentCallId: callId,
       remoteUserId: incoming.callerId,
@@ -192,15 +206,16 @@ export class CallStore {
     });
 
     try {
+      console.log('[CALL] API request sent POST /calls/' + callId + '/accept');
       const res = await callsApi.acceptCall(callId);
-      console.log('[CALL] Accept call response:', res.call.status);
+      console.log('[CALL] API response received status=200');
 
       this.setState({
         livekitToken: res.livekitToken,
         livekitUrl: res.livekitUrl,
       });
 
-      // Notify caller over WebSocket signaling
+      console.log('[CALL] CALL_ACCEPT sent via WebSocket signaling');
       signalingService.send(SignalingEventType.CALL_ACCEPT, {
         callId,
         receiverId: currentUserId,
@@ -208,14 +223,14 @@ export class CallStore {
         livekitUrl: res.livekitUrl,
       });
 
-      // Connect to LiveKit Room
+      console.log('[MEDIA] Room/session connecting...');
       await liveKitService.connect(res.livekitUrl, res.livekitToken);
       this.setCallConnected();
     } catch (err: any) {
-      console.error('[CALL] Accept call failed:', err);
+      console.error('[CALL] Accept call failed code=' + (err?.code || 'ACCEPT_ERR') + ' reason=' + (err?.message || err));
       this.setState({
         callStatus: 'FAILED',
-        errorMessage: err.message || 'Accepting call failed',
+        errorMessage: err?.message || 'Accepting call failed',
       });
     }
   }
@@ -230,7 +245,7 @@ export class CallStore {
         callId: incoming.callId,
       });
     } catch (err) {
-      console.warn('[CALL] Reject call API error:', err);
+      console.warn('[CALL] Reject call API warning:', err);
     } finally {
       this.setState({ incomingCall: null });
     }
@@ -238,6 +253,7 @@ export class CallStore {
 
   // --- CONNECTED CALL DURATION TIMER ---
   private setCallConnected() {
+    console.log('[CALL] CONNECTED');
     this.setState({ callStatus: 'CONNECTED' });
     this.startTimer();
   }
@@ -277,7 +293,7 @@ export class CallStore {
           endedBy: this.state.remoteUserId || 'unknown',
         });
       } catch (err) {
-        console.warn('[CALL] End call request error:', err);
+        console.warn('[CALL] End call request warning:', err);
       }
     }
 
